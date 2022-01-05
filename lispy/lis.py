@@ -1,6 +1,7 @@
 import math
 import operator
 from collections import namedtuple
+import sys
 
 ### Type Definitions
 Symbol = str              # A Scheme Symbol is implemented as a Python str
@@ -165,4 +166,11 @@ def schemestr(exp):
         return str(exp)
 
 ### Run program
-if __name__=="__main__": repl()
+if __name__=="__main__": 
+  if len(sys.argv) == 1: repl()
+  else:
+    file = open(sys.argv[1])
+    lines = file.readlines()
+    program = ''.join(lines)
+    file.close()
+    evaluate(program)
