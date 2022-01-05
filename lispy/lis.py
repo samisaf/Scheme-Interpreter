@@ -96,6 +96,8 @@ def standardEnv() -> Env:
       'max':     max,
       'min':     min,
       'not':     operator.not_,
+      'and':     operator.and_,
+      'or':     operator.or_,
       'null?':   lambda x: x == [], 
       'number?': lambda x: isinstance(x, Number),  
       'print':   print,
