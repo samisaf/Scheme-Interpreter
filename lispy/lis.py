@@ -109,11 +109,14 @@ def standardEnv() -> Env:
   env.table.update(funcs2)
   return env
 
+globalEnv = standardEnv()
+
 ### Evaluation
-def eval(exp, env=standardEnv()) -> Exp:
+def eval(exp, env=globalEnv) -> Exp:
   """Evaluates an expression in an environment."""
-  # string literal
-  if isinstance(exp, Symbol) and exp.startswith('"'): return exp
+  # string literal, note that strings can't contain empty spaces 
+  # given limitation with parser
+  if isinstance(exp, Symbol) and exp.startswith('"'): return exp[1:-1]
   # variable reference
   elif isinstance(exp, Symbol): return searchEnv(exp, env).table[exp]
   # constant number   
@@ -121,33 +124,39 @@ def eval(exp, env=standardEnv()) -> Exp:
   # list expression
   elif isinstance(exp, List):
     operator, *args = exp
-    # quotation
-    if operator == 'quote': return args[0]
-    # conditional
-    elif operator == 'if':
-        (test, conseq, alt) = args
-        exp = (conseq if eval(test, env) else alt)
-        return eval(exp, env)
-    # definition
-    elif operator == 'define':
-        (symbol, definition) = args
-        env.table[symbol] = eval(definition, env)
-    # set
-    elif operator == 'set!':
-        (symbol, definition) = args
-        searchEnv(symbol, env).table[symbol] = eval(definition, env)
-    # procedure
-    elif operator == 'lambda':         
-        (parms, body) = args
-        return createProc(parms, body, env)
-    # procedure call
-    else:
-        proc = eval(operator, env)
-        vals = [eval(arg, env) for arg in args]
-        if isinstance(proc, Proc): return callProc(proc, *vals)
-        else: return proc(*vals)
+    return apply(operator, args, env)
   else:
     raise SyntaxError('unexpected expression')
+
+def apply(operator, args, env):
+  # quotation
+  if operator == 'quote': 
+    return args[0]
+  # conditional
+  elif operator == 'if':
+    (test, conseq, alt) = args
+    exp = (conseq if eval(test, env) else alt)
+    return eval(exp, env)
+  # definition
+  elif operator == 'define':
+    (symbol, definition) = args
+    env.table[symbol] = eval(definition, env)
+  # set
+  elif operator == 'set!':
+    (symbol, definition) = args
+    searchEnv(symbol, env).table[symbol] = eval(definition, env)
+  # procedure
+  elif operator == 'lambda':         
+    (parms, body) = args
+    return createProc(parms, body, env)
+  # procedure call
+  else:
+    proc = eval(operator, env)
+    vals = [eval(arg, env) for arg in args]
+    if isinstance(proc, Proc): 
+      return callProc(proc, *vals) # procedures defined using lambda
+    else: 
+      return proc(*vals) # built in procedures which are python functions
 
 def evaluate(text):
     return eval(parse(text))
@@ -176,3 +185,4 @@ if __name__=="__main__":
     program = ''.join(lines)
     file.close()
     evaluate(program)
+

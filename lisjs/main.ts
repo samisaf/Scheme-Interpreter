@@ -4,6 +4,9 @@ type SchemeSymbol = string; // a symbol is a string
 type Atom = SchemeNumber | SchemeString | SchemeSymbol;
 type Expression = Atom | Array<Expression>;
 
+type R = Map<string, number | string>
+type Env = {table: any; outer: Env;};
+
 /**
  * Converts a string of characters into a list of tokens.
  */
@@ -43,6 +46,25 @@ function atom(token: string): Atom{
   return isNaN(parsed)? String(token): parsed
 }
  
+// Creating an environment object
+/**
+ * An environment: a mapping of {'name':val} pairs, with a reference to an outer Env
+ */
+function createEnv(table={}, outer={}): Env{
+  //@ts-ignore: outer can be empty in the global environment
+  return {table, outer};
+}
+
+
+function searchEnv(name: string, env: Env): Env{
+  const value = env.table[name];
+  return value? value : searchEnv(name, env.outer);
+
+}
+
+
+
+
 let p1 = `
 (begin  
   (define name "Nice_Man")
@@ -52,3 +74,11 @@ let p1 = `
 
 console.log(tokenize(p1))
 console.log(parseTokens(tokenize(p1)))
+
+let e1 = createEnv({"brand": "Ford", "model": "Mustang", "year": 1964})
+e1.table["tires"] = "all season"
+e1.table["year"] =  1970
+let e2 = createEnv({"color": "blue"}, e1)
+console.log(searchEnv("color", e2))
+console.log(searchEnv("brand", e2))
+console.log(e2)
