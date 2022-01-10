@@ -189,7 +189,8 @@ function apply(operator: Expression, args: Array<Expression>, env: SchemeEnv, ve
     case "set!": {
       const [symbol, definition] = args;
       //@ts-ignore -
-      return searchEnv(symbol, env).table[symbol] = evaluate(definition, env);
+      searchEnv(symbol, env).table[symbol] = evaluate(definition, env);
+      return null;
     }
     case "lambda": {
       const [parms, body] = args;

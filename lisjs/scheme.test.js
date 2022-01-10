@@ -1,5 +1,5 @@
 import { assert, assertStrictEquals, assertArrayIncludes } from "https://deno.land/std/testing/asserts.ts";
-import {globalEnv, tokenize, parseTokens, createEnv, searchEnv} from "./main.ts";
+import {globalEnv, tokenize, parseTokens, createEnv, searchEnv} from "./scheme.ts";
 
 // Testing tokenize function
 const p0 = "(define pi 3.14)"
@@ -17,7 +17,7 @@ const e1 = createEnv({"brand": "Ford", "color":"red", "model": "Mustang", "year"
 e1.table["tires"] = "all season";
 e1.table["year"] =  1970;
 const e2 = createEnv({"color": "blue"}, e1);
-
+console.log(searchEnv("color", e1)['color'])
 Deno.test("Testing Parsing Functions", () => {
     assert(tokenize(p0).map( (t, i) => t === p0Tokens[i]).reduce( (x, y) => x&&y, true))
     assert(tokenize(p1).map( (t, i) => t === p1Tokens[i]).reduce( (x, y) => x&&y, true))
@@ -32,9 +32,10 @@ Deno.test("Testing Parsing Functions", () => {
     assert(! tokenize(p1).map( (t, i) => t === p0Tokens[i]).reduce( (x, y) => x&&y, true))
 })
 Deno.test("Testing Environment Functions", () => {
-assert(searchEnv("color", e1) === "red");
-assert(searchEnv("color", e2) === "blue");
-assert(searchEnv("brand", e2) === "Ford");
+    
+assert(searchEnv("color", e1)['color'] === "red");
+assert(searchEnv("color", e2)['color'] === "blue");
+assert(searchEnv("brand", e2)['brand'] === "Ford");
 
 
 })

@@ -166,7 +166,8 @@ function apply(operator, args, env, verbose = false) {
     }
     case "set!": {
       const [symbol, definition] = args;
-      return searchEnv(symbol, env).table[symbol] = evaluate(definition, env);
+      searchEnv(symbol, env).table[symbol] = evaluate(definition, env);
+      return null;
     }
     case "lambda": {
       const [parms, body] = args;
