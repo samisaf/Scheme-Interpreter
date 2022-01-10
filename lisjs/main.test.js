@@ -1,4 +1,4 @@
-import { assert, assertStrictEquals, assertArrayIncludes, assertEquals } from "https://deno.land/std/testing/asserts.ts";
+import { assert, assertStrictEquals, assertArrayIncludes } from "https://deno.land/std/testing/asserts.ts";
 import {globalEnv, tokenize, parseTokens, createEnv, searchEnv} from "./main.ts";
 
 // Testing tokenize function
