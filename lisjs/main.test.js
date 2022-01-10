@@ -6,7 +6,7 @@ const p0 = "(define pi 3.14)"
 const p0Tokens = ["(", "define", "pi", "3.14", ")"];
 const p0Parsed = ["define", "pi", 3.14]
 
-const p1 = `(begin  
+const p1 = `(begin
                 (define name "Nice_Man")
                 (define r 10) 
             )`
