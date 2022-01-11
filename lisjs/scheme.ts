@@ -1,17 +1,13 @@
-type SchemeNumber = number; // A scheme number will be implemented as javascript number
-type SchemeString = string; // A scheme string will be implemented as javascript string
-type SchemeSymbol = string; // A scheme symbol is a string that doesn't start with "
-type SchemeEnv = { table: any; outer: SchemeEnv; name: string };
-type SchemeProc = { parms: []; body: any; env: SchemeEnv };
-type Atom = SchemeNumber | SchemeString | SchemeSymbol;
-type Expression = Atom | SchemeProc | Array<Expression>;
+type Environment = { table: any; outer: Environment;};
+type Procedure = { parms: []; body: Blob; env: Environment };
+type Atom = number | string;
+type Expression = Atom | Procedure | Expression[];
 
 /**
  * Converts a string of characters into a list of tokens.
  */
 export function tokenize(text: string): string[] {
-  const isEmpty = (s: string) =>
-    s === "" || s === "\n" || s === "\t" || s === "\r\n";
+  const isEmpty = (s: string) => s === "" || s === "\n" || s === "\t" || s === "\r\n";
   return text.replaceAll("(", " ( ").replaceAll(")", " ) ").replaceAll("\n", " " ).replaceAll("\t", " ")
              .split(" ").filter((s) => !isEmpty(s));
 }
@@ -29,43 +25,32 @@ export function parseTokens(tokens: string[]): Expression {
       tokens.shift();
       return L;
     } else if (token === ")") throw SyntaxError("unexpected )");
-    // @ts-ignore: token will always have a value as we checked for non-empty array
-    else return atom(token);
+    // Numbers become numbers; otherwise, token is either a symbol or a string.
+    // A string can represent a symbol or a string. See typeOf function.
+    else return isNaN(Number(token)) ? String(token) : Number(token);
   }
 }
 
 /**
- * Numbers become numbers; otherwise, token is either a symbol or a string.
- * Will have to differentiate between symbols and strings later
+ * Creates an environment object which is a mapping of {'name':val} pairs, with a reference to an outer Env
  */
-function atom(token: string): Atom {
-  const parsed = Number(token);
-  return isNaN(parsed) ? String(token) : parsed;
-}
-
-// Creating an environment object
-/**
- * An environment: a mapping of {'name':val} pairs, with a reference to an outer Env
- */
-export function createEnv(table = {}, outer = {}): SchemeEnv {
-  //@ts-ignore: outer can be empty in the global environment
+export function createEnv(table: any, outer: Environment): Environment {
   return { table, outer };
 }
 
 /**
  * Finds the innermost Env where name appears
  */
-export function searchEnv(name: string, env: SchemeEnv): SchemeEnv {
+export function searchEnv(name: string, env: Environment): Environment {
   const value = env.table[name];
   return typeof value === "undefined" ? searchEnv(name, env.outer) : env;
 }
 
-// Creating a procedure object
 /**
- * A user-defined Scheme procedure.
+ * Creates a user-defined Scheme procedure.
  */
-function createProc(parms: Array<any>, body: {}, env: SchemeEnv) {
-  function call(...args: any) {
+function createProc(parms: Expression[], body: Expression, env: Environment) {
+  function call(...args: Expression[]) {
     const newEnv = createEnv(zip(parms, args), env);
     return evaluate(body, newEnv);
   }
@@ -75,23 +60,19 @@ function createProc(parms: Array<any>, body: {}, env: SchemeEnv) {
 /**
  * Zips two arrays of keys and values to an object
  */
-function zip(a1: Array<any>, a2: Array<any>) {
+export function zip(a1: Array<any>, a2: Array<any>) {
   const result = a1.reduce((acc, k, i) => (acc[k] = a2[i], acc), {});
   return result;
 }
 
-// Building a basic Scheme environment
 /**
- * An environment with some Scheme standard procedures.
+ * Builds an environment with some Scheme standard procedures.
  */
-function standardEnv(): SchemeEnv {
-  const env = createEnv(Math); // sin, cos, sqrt, pi, ...
-
+export function standardEnv(): Environment {
+  const env = createEnv(Math, Object()); // sin, cos, sqrt, pi, ...
   // Arithemitc operators
-  env.table["+"] = (...array: any) =>
-    array.reduce((x: number, y: number) => x + y, 0);
-  env.table["*"] = (...array: any) =>
-    array.reduce((x: number, y: number) => x * y, 1);
+  env.table["+"] = (...array: any) => array.reduce((x: number, y: number) => x + y, 0);
+  env.table["*"] = (...array: any) => array.reduce((x: number, y: number) => x * y, 1);
   env.table["-"] = (x: number, y: number) => x - y;
   env.table["/"] = (x: number, y: number) => x / y;
   env.table[">"] = (x: number, y: number) => x > y;
@@ -114,7 +95,7 @@ function standardEnv(): SchemeEnv {
     list.reduce(func, initial);
 
   // type checks
-  env.table["null?"] = (x: []) => x.length == 0;
+  env.table["null?"] = (x: any) => x.length == 0;
   env.table["number?"] = (x: any) => typeof x == "number";
   env.table["procedure?"] = (x: any) => typeof x == "function";
   env.table["symbol?"] = (x: any) => typeof x == "string" && !x.startsWith("");
@@ -122,38 +103,35 @@ function standardEnv(): SchemeEnv {
   env.table["list?"] = (l: any) => Array.isArray(l);
 
   // boolean functions
-  env.table["and"] = (...list: []) => list.reduce((x, y) => x && y, true);
-  env.table["or"] = (...list: []) => list.reduce((x, y) => x || y, false);
+  env.table["and"] = (...list: any) => list.reduce((x: boolean, y: boolean) => x && y, true);
+  env.table["or"] = (...list: any) => list.reduce((x: boolean, y: boolean) => x || y, false);
   env.table["not"] = (x: boolean) => !x;
   env.table["equal?"] = (x: any, y: any) => x ===y;
 
   // misc
   env.table["print"] = console.log
   env.table["begin"] = (...l: any) => l[l.length - 1];
-  env.table["apply"] = (proc: Function, args: []) => proc(...args);
+  env.table["apply"] = (proc: any, args: []) => proc(...args);
 
   return env;
 }
 
 export const globalEnv = standardEnv();
 
-function typeOf(expression: Expression): string {
+export function typeOf(expression: Expression): string {
   if (typeof expression == "function") return "procedure";
   else if (typeof expression == "number") return "number";
-  else if (typeof expression == "string" && !expression.startsWith('"')) {
-    return "symbol";
-  } // string literal, note that strings can't contain empty spaces given limitation with parser
-  else if (typeof expression == "string" && expression.startsWith('"')) {
-    return "string";
-  } else if (Array.isArray(expression)) return "list";
+  else if (typeof expression == "string" && !expression.startsWith('"')) return "symbol";
+  // string literal, note that strings can't contain empty spaces given limitation with parser
+  else if (typeof expression == "string" && expression.startsWith('"')) return "string";
+  else if (Array.isArray(expression)) return "list";
   else throw TypeError("Unkown type");
 }
 
-// Evaluation and Application
 /**
  * Evaluates an expression in an environment.
  */
-function evaluate(exp: any, env = globalEnv, verbose = false): Expression {
+export function evaluate(exp: any, env = globalEnv, verbose = false): Expression {
   if (verbose) console.log("EVAL EXP", exp);
   switch (typeOf(exp)) {
     case "number": return exp;
@@ -169,7 +147,7 @@ function evaluate(exp: any, env = globalEnv, verbose = false): Expression {
   }
 }
 
-function apply(operator: Expression, args: Array<Expression>, env: SchemeEnv, verbose=false) {
+export function apply(operator: Expression, args: Array<Expression>, env: Environment, verbose=false) {
   if (verbose) console.log("APPLY OPERATOR", operator, "TO ARGS", args);
   switch (operator) {
     case "quote":
@@ -182,31 +160,28 @@ function apply(operator: Expression, args: Array<Expression>, env: SchemeEnv, ve
     }
     case "define": {
       const [symbol, definition] = args;
-      //@ts-ignore -
-      env.table[symbol] = evaluate(definition, env);
+      env.table[symbol as string] = evaluate(definition, env);
       return null;
     }
     case "set!": {
       const [symbol, definition] = args;
-      //@ts-ignore -
-      searchEnv(symbol, env).table[symbol] = evaluate(definition, env);
+      searchEnv(symbol as string, env).table[symbol as string] = evaluate(definition, env);
       return null;
     }
     case "lambda": {
       const [parms, body] = args;
-      //@ts-ignore -
-      return createProc(parms, body, env);
+      return createProc(parms as Expression[], body, env);
     }
     default: { // procedure call
       const proc = evaluate(operator, env);
       const vals = args.map((arg) => evaluate(arg, env));
-      //@ts-ignore-
+      //@ts-ignore proc is either a javascript function or a scheme procedure
       return proc(...vals);
     }
   }
 }
 
-function exe(program: string, verbose = false) {
+export default function schemeEval(program: string, verbose = false) {
   return evaluate(parseTokens(tokenize(program)), globalEnv, verbose);
 }
 
@@ -307,8 +282,8 @@ const symbdiff = `
   diff
 )`
 
-console.log(exe(fact10))
-console.log(exe(fibs10))
-console.log(exe(sqrt2))
-console.log(exe(symbdiff))
-console.log(exe(towers3))
+console.log(schemeEval(fact10))
+console.log(schemeEval(fibs10))
+console.log(schemeEval(sqrt2))
+console.log(schemeEval(symbdiff))
+console.log(schemeEval(towers3))

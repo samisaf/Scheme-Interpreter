@@ -1,17 +1,11 @@
-/**
- * Converts a string of characters into a list of tokens.
- */
-export function tokenize(text) {
-  const isEmpty = (s) =>
-    s === "" || s === "\n" || s === "\t" || s === "\r\n";
-  return text.replaceAll("(", " ( ").replaceAll(")", " ) ").replaceAll("\n", " " ).replaceAll("\t", " ")
-             .split(" ").filter((s) => !isEmpty(s));
+/** Converts a string of characters into a list of tokens.*/
+function tokenize(text) {
+  const isEmpty = (s) => s === "" || s === "\n" || s === "\t" || s === "\r\n";
+  return text.replaceAll("(", " ( ").replaceAll(")", " ) ").replaceAll(/[\s\n\t]/g, " " ).split(" ").filter((s) => !isEmpty(s));
 }
 
-/**
- * Reads an expression from a sequence of tokens.
- */
-export function parseTokens(tokens) {
+/** Converts a sequence of string tokens into an array representing the AST.*/
+function parseTokens(tokens) {
   if (tokens.length === 0) throw SyntaxError("unexpected EOF");
   else {
     const token = tokens.shift(); // pops first token
@@ -21,40 +15,24 @@ export function parseTokens(tokens) {
       tokens.shift();
       return L;
     } else if (token === ")") throw SyntaxError("unexpected )");
-    // @ts-ignore: token will always have a value as we checked for non-empty array
-    else return atom(token);
+    // Numbers become numbers; otherwise, token is either a symbol or a string.
+    // A string can represent a symbol or a string. See typeOf function.
+    else return isNaN(Number(token)) ? String(token) : Number(token);
   }
 }
 
-/**
- * Numbers become numbers; otherwise, token is either a symbol or a string.
- * Will have to differentiate between symbols and strings later
- */
-function atom(token) {
-  const parsed = Number(token);
-  return isNaN(parsed) ? String(token) : parsed;
-}
-
-// Creating an environment object
-/**
- * An environment: a mapping of {'name':val} pairs, with a reference to an outer Env
- */
-export function createEnv(table = {}, outer = {}) {
+/** Creates an environment which is a mapping of {'name':val} pairs, with a reference to an outer Env*/
+function createEnv(table = {}, outer = {}) {
   return { table, outer };
 }
 
-/**
- * Finds the innermost Env where name appears
- */
+/** Finds the innermost environment where name appears */
 export function searchEnv(name, env) {
   const value = env.table[name];
   return typeof value === "undefined" ? searchEnv(name, env.outer) : env;
 }
 
-// Creating a procedure object
-/**
- * A user-defined Scheme procedure.
- */
+/** Creates a user-defined a procedure object. */
 function createProc(parms, body, env) {
   function call(...args) {
     const newEnv = createEnv(zip(parms, args), env);
@@ -63,18 +41,12 @@ function createProc(parms, body, env) {
   return call;
 }
 
-/**
- * Zips two arrays of keys and values to an object
- */
+/** Zips two arrays of keys and values to an object.*/
 function zip(a1, a2) {
-  const result = a1.reduce((acc, k, i) => (acc[k] = a2[i], acc), {});
-  return result;
+  return a1.reduce((acc, k, i) => (acc[k] = a2[i], acc), {});
 }
 
-// Building a basic Scheme environment
-/**
- * An environment with some Scheme standard procedures.
- */
+/** Creates a standar environment with basic standard procedures.*/
 function standardEnv() {
   const env = createEnv(Math); // sin, cos, sqrt, pi, ...
   // Arithemitc operators
@@ -116,22 +88,19 @@ function standardEnv() {
   return env;
 }
 
-export const globalEnv = standardEnv();
+const globalEnv = standardEnv();
 
 function typeOf(expression) {
   if (typeof expression == "function") return "procedure";
   else if (typeof expression == "number") return "number";
-  // string literal, note that strings can't contain empty spaces given limitation with parser
   else if (typeof expression == "string" && !expression.startsWith('"')) return "symbol";
+  // string literal, note that strings can't contain empty spaces given limitation with parser
   else if (typeof expression == "string" && expression.startsWith('"'))  return "string";
   else if (Array.isArray(expression)) return "list";
   else throw TypeError("Unkown type");
 }
 
-// Evaluation and Application
-/**
- * Evaluates an expression in an environment.
- */
+/** Evaluates an expression in an environment.*/
 function evaluate(exp, env = globalEnv, verbose = false) {
   if (verbose) console.log("EVAL EXP", exp);
   switch (typeOf(exp)) {
@@ -148,6 +117,7 @@ function evaluate(exp, env = globalEnv, verbose = false) {
   }
 }
 
+/** Applies an operator to arguments in an environment.*/
 function apply(operator, args, env, verbose = false) {
   if (verbose) console.log("APPLY OPERATOR", operator, "TO ARGS", args);
   switch (operator) {
@@ -173,7 +143,8 @@ function apply(operator, args, env, verbose = false) {
       const [parms, body] = args;
       return createProc(parms, body, env);
     }
-    default: { // procedure call
+    default: {
+      // procedure call
       const proc = evaluate(operator, env);
       const vals = args.map((arg) => evaluate(arg, env));
       return proc(...vals);
@@ -181,7 +152,7 @@ function apply(operator, args, env, verbose = false) {
   }
 }
 
-function exe(program, verbose = false) {
+export default function schemeEval(program, verbose = false) {
   return evaluate(parseTokens(tokenize(program)), globalEnv, verbose);
 }
 
@@ -282,9 +253,9 @@ const symbdiff = `
   diff
 )`
 
-console.log(exe('(cos PI)'))
-console.log(exe(fact10))
-console.log(exe(fibs10))
-console.log(exe(sqrt2))
-console.log(exe(towers3))
-console.log(exe(symbdiff))
+console.log(schemeEval('(cos PI)'))
+console.log(schemeEval(fact10))
+console.log(schemeEval(fibs10))
+console.log(schemeEval(sqrt2))
+console.log(schemeEval(towers3))
+console.log(schemeEval(symbdiff))
