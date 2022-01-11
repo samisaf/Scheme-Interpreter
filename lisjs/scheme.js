@@ -1,3 +1,5 @@
+// © 2022 Sami Safadi
+
 /** Converts a string of characters into a list of tokens.*/
 function tokenize(text) {
   const isEmpty = (s) => s === "" || s === "\n" || s === "\t" || s === "\r\n";

@@ -1,6 +1,8 @@
+// © 2022 Sami Safadi
+
 type Environment = { table: any; outer: Environment;};
 type Procedure = { parms: []; body: Blob; env: Environment };
-type Atom = number | string;
+type Atom = number | string; // A string can represent a symbol or a string. See typeOf function.
 type Expression = Atom | Procedure | Expression[];
 
 /**
@@ -8,8 +10,7 @@ type Expression = Atom | Procedure | Expression[];
  */
 export function tokenize(text: string): string[] {
   const isEmpty = (s: string) => s === "" || s === "\n" || s === "\t" || s === "\r\n";
-  return text.replaceAll("(", " ( ").replaceAll(")", " ) ").replaceAll("\n", " " ).replaceAll("\t", " ")
-             .split(" ").filter((s) => !isEmpty(s));
+  return text.replaceAll("(", " ( ").replaceAll(")", " ) ").replaceAll(/[\s\n\t]/g, " " ).split(" ").filter((s) => !isEmpty(s));
 }
 
 /**
@@ -26,7 +27,6 @@ export function parseTokens(tokens: string[]): Expression {
       return L;
     } else if (token === ")") throw SyntaxError("unexpected )");
     // Numbers become numbers; otherwise, token is either a symbol or a string.
-    // A string can represent a symbol or a string. See typeOf function.
     else return isNaN(Number(token)) ? String(token) : Number(token);
   }
 }
@@ -61,8 +61,7 @@ function createProc(parms: Expression[], body: Expression, env: Environment) {
  * Zips two arrays of keys and values to an object
  */
 export function zip(a1: Array<any>, a2: Array<any>) {
-  const result = a1.reduce((acc, k, i) => (acc[k] = a2[i], acc), {});
-  return result;
+  return a1.reduce((acc, k, i) => (acc[k] = a2[i], acc), {});
 }
 
 /**
@@ -80,20 +79,16 @@ export function standardEnv(): Environment {
   env.table["<"] = (x: number, y: number) => x < y;
   env.table["<="] = (x: number, y: number) => x <= y;
   env.table["="] = (x: number, y: number) => x === y;
-
   // list operators 1
   env.table["list"] = (...args: any) => Array(args).pop();
   env.table["car"] = (l: any) => l[0];
   env.table["cdr"] = (l: any) => l.slice(1);
   env.table["cons"] = (x: any, y: any) => [x, y];
   env.table["append"] = (l: any, i: any) => [...l, i];
-
   // list operators 2
   env.table["map"] = (func: any, list: []) => list.map(func);
   env.table["filter"] = (func: any, list: []) => list.filter(func);
-  env.table["reduce"] = (func: any, list: [], initial: any) =>
-    list.reduce(func, initial);
-
+  env.table["reduce"] = (func: any, list: [], initial: any) => list.reduce(func, initial);
   // type checks
   env.table["null?"] = (x: any) => x.length == 0;
   env.table["number?"] = (x: any) => typeof x == "number";
@@ -101,13 +96,11 @@ export function standardEnv(): Environment {
   env.table["symbol?"] = (x: any) => typeof x == "string" && !x.startsWith("");
   env.table["string?"] = (x: any) => typeof x == "string" && x.startsWith("");
   env.table["list?"] = (l: any) => Array.isArray(l);
-
   // boolean functions
   env.table["and"] = (...list: any) => list.reduce((x: boolean, y: boolean) => x && y, true);
   env.table["or"] = (...list: any) => list.reduce((x: boolean, y: boolean) => x || y, false);
   env.table["not"] = (x: boolean) => !x;
   env.table["equal?"] = (x: any, y: any) => x ===y;
-
   // misc
   env.table["print"] = console.log
   env.table["begin"] = (...l: any) => l[l.length - 1];
