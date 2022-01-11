@@ -152,9 +152,9 @@ export function apply(operator: Expression, args: Array<Expression>, env: Enviro
       return evaluate(exp, env);
     }
     case "define": {
-      const [symbol, definition] = args;
-      env.table[symbol as string] = evaluate(definition, env);
-      return null;
+      const [defined, definition] = args;
+      if (Array.isArray(defined)) return createProc(defined.slice(1), definition, env); // procedure definition
+      else return env.table[defined as string] = evaluate(definition, env); // variable definition
     }
     case "set!": {
       const [symbol, definition] = args;
@@ -180,7 +180,7 @@ export default function schemeEval(program: string, verbose = false) {
 
 const fact10 = `
 (begin
-  (define fact (lambda (n) (if (<= n 1) 1 (* n (fact (- n 1))))))
+  (define (fact n) (if (<= n 1) 1 (* n (fact (- n 1))))))
   (fact 10)
 )`;
 

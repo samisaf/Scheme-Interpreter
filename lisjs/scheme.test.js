@@ -1,3 +1,5 @@
+// © 2022 Sami Safadi
+
 import { assert, assertStrictEquals, assertArrayIncludes } from "https://deno.land/std/testing/asserts.ts";
 import {globalEnv, tokenize, parseTokens, createEnv, searchEnv} from "./scheme.ts";
 import schemeEval from "./scheme.ts";
@@ -53,6 +55,7 @@ Deno.test("Testing Standard Environment Functions", () => {
 Deno.test("Testing Evaluation", () => {
     assertStrictEquals(schemeEval('(+ 1 1)'), 2);
     assertStrictEquals(schemeEval("(begin(define square (lambda (x) (* x x))) (square 8))"), 64);
+    assertStrictEquals(schemeEval("(begin(define (square x) (* x x)) (square 8))"), 64);
     const p1 = "(begin(define square (lambda (x) (* x x))) (map square (list 0 1 2 3 4 5 )))";
     assertArrayIncludes(schemeEval(p1), [0, 1, 4, 9, 16, 25]);
 })
