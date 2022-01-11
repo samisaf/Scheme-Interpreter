@@ -1,9 +1,9 @@
 // © 2022 Sami Safadi
 
-type Environment = { table: any; outer: Environment;};
+type Environment = { table: Record<string, Expression>; outer: Environment;};
 type Procedure = { parms: []; body: Blob; env: Environment };
 type Atom = number | string; // A string can represent a symbol or a string. See typeOf function.
-type Expression = Atom | Procedure | Expression[];
+type Expression = Atom | Function | Procedure | Expression[];
 
 /**
  * Converts a string of characters into a list of tokens.
@@ -35,7 +35,7 @@ export function parseTokens(tokens: string[]): Expression {
  * Creates an environment object which is a mapping of {'name':val} pairs, with a reference to an outer Env
  */
 export function createEnv(table: any, outer: Environment): Environment {
-  return { table, outer };
+  return { table , outer };
 }
 
 /**
