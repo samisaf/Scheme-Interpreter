@@ -4,23 +4,6 @@ import { assert, assertStrictEquals, assertArrayIncludes } from "https://deno.la
 import {globalEnv, tokenize, parseTokens, createEnv, searchEnv} from "./scheme.ts";
 import schemeEval from "./scheme.ts";
 
-// Testing tokenize function
-const p0 = "(define pi 3.14)"
-const p0Tokens = ["(", "define", "pi", "3.14", ")"];
-const p0Parsed = ["define", "pi", 3.14]
-
-const p1 = `(begin
-                (define name "Nice_Man")
-                (define r 10) 
-            )`
-const p1Tokens = ["(", "begin", "(", "define", "name",  '"Nice_Man"', ")", 
-                                "(", "define", "r", "10", ")", ")"];
-
-const e1 = createEnv({"brand": "Ford", "color":"red", "model": "Mustang", "year": 1964});
-e1.table["tires"] = "all season";
-e1.table["year"] =  1970;
-const e2 = createEnv({"color": "blue"}, e1);
-console.log(searchEnv("color", e1).table['color'])
 Deno.test("Testing Parsing Functions", () => {
     const p0 = "(define pi 3.14)"
     const p0Tokens = ["(", "define", "pi", "3.14", ")"];

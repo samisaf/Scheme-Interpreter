@@ -1,11 +1,12 @@
+// deno-lint-ignore-file no-explicit-any
 // © 2022 Sami Safadi
 
 type SchemeNumber = number; // A scheme number will be implemented as javascript number
 type SchemeString = string; // A scheme string will be implemented as javascript string
 type SchemeSymbol = string; // A scheme symbol is a string that doesn't start with "
-type Environment = { table: Record<string, any>; outer: Environment; name: string };
+type Environment = { table: Record<SchemeSymbol, Expression>; outer: Environment;};
 type Atom = SchemeNumber | SchemeString | SchemeSymbol;
-type Expression = Atom | Array<Expression>;
+type Expression = Atom | Function | Expression[]; 
 
 /**
  * Converts a string of characters into a list of tokens.
@@ -36,8 +37,7 @@ export function parseTokens(tokens: string[]): Expression {
 /**
  * Creates an environment object which is a mapping of {'name':val} pairs, with a reference to an outer Env
  */
-export function createEnv(table: any, outer: Environment): Environment {
-  //@ts-ignore - 
+export function createEnv(table: Record<SchemeSymbol, Expression>, outer: Environment): Environment {
   return { table , outer };
 }
 
@@ -71,7 +71,8 @@ export function zip(a1: Array<any>, a2: Array<any>) {
  * Builds an environment with some Scheme standard procedures.
  */
 export function standardEnv(): Environment {
-  const env = createEnv(Math, Object()); // sin, cos, sqrt, pi, ...
+  // @ts-ignore - adds Math module, not standard table, but provides helpful functions sin, cos, sqrt, pi, ...
+  const env = createEnv(Math, Object());
   // Arithemitc operators
   env.table["+"] = (...array: any) => array.reduce((x: number, y: number) => x + y, 0);
   env.table["*"] = (...array: any) => array.reduce((x: number, y: number) => x * y, 1);
@@ -143,7 +144,7 @@ function evaluate(exp: Expression, env = globalEnv, verbose = false): Expression
   }
 }
 
-export function apply(operator: Expression, args: Array<Expression>, env: Environment, verbose=false) {
+export function apply(operator: Expression, args: Expression[], env: Environment, verbose=false) {
   if (verbose) console.log("APPLY OPERATOR", operator, "TO ARGS", args);
   switch (operator) {
     case "quote":
