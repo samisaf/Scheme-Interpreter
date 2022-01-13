@@ -1,9 +1,11 @@
 // © 2022 Sami Safadi
 
-type Environment = { table: Record<string, Expression>; outer: Environment;};
-type Procedure = { parms: []; body: Blob; env: Environment };
-type Atom = number | string; // A string can represent a symbol or a string. See typeOf function.
-type Expression = Atom | Function | Procedure | Expression[];
+type SchemeNumber = number; // A scheme number will be implemented as javascript number
+type SchemeString = string; // A scheme string will be implemented as javascript string
+type SchemeSymbol = string; // A scheme symbol is a string that doesn't start with "
+type Environment = { table: Record<string, any>; outer: Environment; name: string };
+type Atom = SchemeNumber | SchemeString | SchemeSymbol;
+type Expression = Atom | Array<Expression>;
 
 /**
  * Converts a string of characters into a list of tokens.
@@ -35,6 +37,7 @@ export function parseTokens(tokens: string[]): Expression {
  * Creates an environment object which is a mapping of {'name':val} pairs, with a reference to an outer Env
  */
 export function createEnv(table: any, outer: Environment): Environment {
+  //@ts-ignore - 
   return { table , outer };
 }
 
@@ -52,7 +55,7 @@ export function searchEnv(name: string, env: Environment): Environment {
 function createProc(parms: Expression[], body: Expression, env: Environment) {
   function call(...args: Expression[]) {
     const newEnv = createEnv(zip(parms, args), env);
-    return evaluate(body, newEnv);
+    return evaluate(body as Expression, newEnv);
   }
   return call;
 }
@@ -124,15 +127,15 @@ export function typeOf(expression: Expression): string {
 /**
  * Evaluates an expression in an environment.
  */
-export function evaluate(exp: any, env = globalEnv, verbose = false): Expression {
+function evaluate(exp: Expression, env = globalEnv, verbose = false): Expression {
   if (verbose) console.log("EVAL EXP", exp);
   switch (typeOf(exp)) {
     case "number": return exp;
-    case "string": return exp.slice(1, -1);
-    case "symbol": return searchEnv(exp, env).table[exp];
+    case "string": return (exp as string).slice(1, -1);
+    case "symbol": return searchEnv(exp as string, env).table[exp as string];
     case "list":   
     {
-      const [operator, ...args] = exp
+      const [operator, ...args] = (exp as Array<Expression>)
       return apply(operator, args, env);
     }
     default:
