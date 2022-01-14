@@ -6,12 +6,14 @@ type SchemeString = string; // A scheme string will be implemented as javascript
 type SchemeSymbol = string; // A scheme symbol is a string that doesn't start with "
 type Environment = { table: Record<SchemeSymbol, Expression>; outer: Environment;};
 type Atom = SchemeNumber | SchemeString | SchemeSymbol;
-type Expression = Atom | Function | Expression[]; 
+type Procedure = (...args: Expression[]) => Expression; // scheme defined procedure
+// deno-lint-ignore ban-types 
+type Expression = Atom | Function | Procedure | Expression[]; // JavaScript function can also serve as expression
 
 /**
  * Converts a string of characters into a list of tokens.
  */
-export function tokenize(text: string): string[] {
+function tokenize(text: string): string[] {
   const isEmpty = (s: string) => s === "" || s === "\n" || s === "\t" || s === "\r\n";
   return text.replaceAll("(", " ( ").replaceAll(")", " ) ").replaceAll(/[\s\n\t]/g, " " ).split(" ").filter((s) => !isEmpty(s));
 }
@@ -19,7 +21,7 @@ export function tokenize(text: string): string[] {
 /**
  * Reads an expression from a sequence of tokens.
  */
-export function parseTokens(tokens: string[]): Expression {
+function parseTokens(tokens: string[]): Expression {
   if (tokens.length === 0) throw SyntaxError("unexpected EOF");
   else {
     const token = tokens.shift(); // pops first token
@@ -37,14 +39,14 @@ export function parseTokens(tokens: string[]): Expression {
 /**
  * Creates an environment object which is a mapping of {'name':val} pairs, with a reference to an outer Env
  */
-export function createEnv(table: Record<SchemeSymbol, Expression>, outer: Environment): Environment {
+function createEnv(table: Record<SchemeSymbol, Expression>, outer: Environment): Environment {
   return { table , outer };
 }
 
 /**
  * Finds the innermost Env where name appears
  */
-export function searchEnv(name: string, env: Environment): Environment {
+function searchEnv(name: string, env: Environment): Environment {
   const value = env.table[name];
   return typeof value === "undefined" ? searchEnv(name, env.outer) : env;
 }
@@ -52,7 +54,7 @@ export function searchEnv(name: string, env: Environment): Environment {
 /**
  * Creates a user-defined Scheme procedure.
  */
-function createProc(parms: Expression[], body: Expression, env: Environment) {
+function createProc(parms: Expression[], body: Expression, env: Environment): Procedure {
   function call(...args: Expression[]) {
     const newEnv = createEnv(zip(parms, args), env);
     return evaluate(body as Expression, newEnv);
@@ -63,14 +65,14 @@ function createProc(parms: Expression[], body: Expression, env: Environment) {
 /**
  * Zips two arrays of keys and values to an object
  */
-export function zip(a1: Array<any>, a2: Array<any>) {
+function zip(a1: Array<any>, a2: Array<any>) {
   return a1.reduce((acc, k, i) => (acc[k] = a2[i], acc), {});
 }
 
 /**
  * Builds an environment with some Scheme standard procedures.
  */
-export function standardEnv(): Environment {
+function standardEnv(): Environment {
   // @ts-ignore - adds Math module, not standard table, but provides helpful functions sin, cos, sqrt, pi, ...
   const env = createEnv(Math, Object());
   // Arithemitc operators
@@ -113,9 +115,7 @@ export function standardEnv(): Environment {
   return env;
 }
 
-export const globalEnv = standardEnv();
-
-export function typeOf(expression: Expression): string {
+function typeOf(expression: Expression): string {
   if (typeof expression == "function") return "procedure";
   else if (typeof expression == "number") return "number";
   else if (typeof expression == "string" && !expression.startsWith('"')) return "symbol";
@@ -136,7 +136,7 @@ function evaluate(exp: Expression, env = globalEnv, verbose = false): Expression
     case "symbol": return searchEnv(exp as string, env).table[exp as string];
     case "list":   
     {
-      const [operator, ...args] = (exp as Array<Expression>)
+      const [operator, ...args] = (exp as Expression[])
       return apply(operator, args, env);
     }
     default:
@@ -144,7 +144,7 @@ function evaluate(exp: Expression, env = globalEnv, verbose = false): Expression
   }
 }
 
-export function apply(operator: Expression, args: Expression[], env: Environment, verbose=false) {
+function apply(operator: Expression, args: Expression[], env: Environment, verbose=false): Expression {
   if (verbose) console.log("APPLY OPERATOR", operator, "TO ARGS", args);
   switch (operator) {
     case "quote":
@@ -162,8 +162,7 @@ export function apply(operator: Expression, args: Expression[], env: Environment
     }
     case "set!": {
       const [symbol, definition] = args;
-      searchEnv(symbol as string, env).table[symbol as string] = evaluate(definition, env);
-      return null;
+      return searchEnv(symbol as string, env).table[symbol as string] = evaluate(definition, env);
     }
     case "lambda": {
       const [parms, body] = args;
@@ -177,6 +176,10 @@ export function apply(operator: Expression, args: Expression[], env: Environment
     }
   }
 }
+
+const globalEnv = standardEnv();
+
+export {tokenize, parseTokens, createEnv, searchEnv, createProc, standardEnv, globalEnv, typeOf, evaluate, apply}; // exports needed for testing files
 
 export default function schemeEval(program: string, verbose = false) {
   return evaluate(parseTokens(tokenize(program)), globalEnv, verbose);
