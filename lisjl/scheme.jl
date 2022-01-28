@@ -5,10 +5,12 @@ tokenize(text::String) = split(replace(text, "(" => " ( ", ")" => " ) "))
 function parseTokens(tokens::Vector)
   if length(tokens) == 0 throw(error("Syntax Error - Unexpected EOF")) end
   token = popfirst!(tokens)
+  # if token is an opening ( then we create a vector, and we recursively parse in it 
+  # following tokens until we encounter a closing )
   if token == "("
       L = []
       while tokens[1] != ")" push!(L, parseTokens(tokens)) end
-      popfirst!(tokens) # pop off ')'
+      popfirst!(tokens) # pop off )
       return L
   elseif token == ")" throw(error("Syntax Error - Unexpected )"))
   else return atom(token)
@@ -17,22 +19,23 @@ end
 
 "Numbers become numbers; Strings become strings; every other token is a symbol."
 function atom(token)
-    try return parse(BigInt, token)
+    try return parse(Int64, token)
     catch err
         try return parse(Float64, token)
         catch err
+          # if a token starts with " then it is a string otherwise it is a symbol
           if token[1] =='"' return String(token) else return Symbol(token) end
         end
     end
 end
 
-"An environment: a dict of {'var':val} pairs, with an outer Env"
+"An environment: a dict of ('symbol'=>value) pairs, with an outer 'parent' Env"
 createEnv(table = Dict(), outer = Missing) = (table = table, outer = outer)
 
 "Updates an environment table with a new dictionary"
 updateEnv!(env, data) = merge!(env.table, data)
 
-"Find the innermost Env where var appears."
+"Find the innermost environment where a symbol appears."
 function searchEnv(var, env)
   if var in keys(env.table) return env
   else return searchEnv(var, env.outer)
